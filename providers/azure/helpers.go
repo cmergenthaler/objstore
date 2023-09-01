@@ -63,12 +63,26 @@ func getContainerClient(conf Config) (*container.Client, error) {
 		return containerClient, nil
 	}
 
-	// Use MSI for authentication.
-	msiOpt := &azidentity.ManagedIdentityCredentialOptions{}
+	// Use UserAssigned MSI for authentication if set.
 	if conf.UserAssignedID != "" {
-		msiOpt.ID = azidentity.ClientID(conf.UserAssignedID)
+		msiOpt := &azidentity.ManagedIdentityCredentialOptions{
+			ID: azidentity.ClientID(conf.UserAssignedID),
+		}
+		cred, err := azidentity.NewManagedIdentityCredential(msiOpt)
+		if err != nil {
+			return nil, err
+		}
+		containerClient, err := container.NewClient(containerURL, cred, opt)
+		if err != nil {
+			return nil, err
+		}
+		return containerClient, nil
 	}
-	cred, err := azidentity.NewManagedIdentityCredential(msiOpt)
+
+	// Try to auth with DefaultAzureCredentials if all the above is not set
+	// see https://github.com/Azure/azure-sdk-for-go/tree/main/sdk/azidentity#defaultazurecredential
+	defOpt := &azidentity.DefaultAzureCredentialOptions{}
+	cred, err := azidentity.NewDefaultAzureCredential(defOpt)
 	if err != nil {
 		return nil, err
 	}

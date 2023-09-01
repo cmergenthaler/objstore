@@ -451,11 +451,16 @@ config:
 prefix: ""
 ```
 
-If `msi_resource` is used, authentication is done via system-assigned managed identity. The value for Azure should be `https://<storage-account-name>.blob.core.windows.net`.
+Following authentication methods can be used and are attempted in that order, stopping if one succeeds:
+- storage connection string, if `storage_connection_string` is set. In that case the values of `storage_account` and `endpoint` values will not be used
+- storage account key, if `storage_account_key` is set
+- user-assigned managed identity, if `user_assigned_id` is set
+- environment variables for service-principal or username, see [azure docs](https://github.com/Azure/azure-sdk-for-go/tree/main/sdk/azidentity#environment-variables)
+- workload identity by using the default environment variables `AZURE_TENANT_ID`, `AZURE_CLIENT_ID` and `AZURE_FEDERATED_TOKEN_FILE`
+- system-assigned managed identity of the underlying host
+- azure cli authenticated user or service principal
 
-If `user_assigned_id` is used, authentication is done via user-assigned managed identity. When using `user_assigned_id` the `msi_resource` defaults to `https://<storage_account>.<endpoint>`
-
-If `storage_connection_string` is set, the values of `storage_account` and `endpoint` values will not be used. Use this method over `storage_account_key` if you need to authenticate via a SAS token.
+Note that if you don't use a connection-string, the storage-account endpoint is set to `https://<storage_account>.<endpoint>`, where endpoint by default results to `blob.core.windows.net`.
 
 The generic `max_retries` will be used as value for the `pipeline_config`'s `max_tries` and `reader_config`'s `max_retry_requests`. For more control, `max_retries` could be ignored (0) and one could set specific retry values.
 
